@@ -1,0 +1,6 @@
+For starting clock-in-viz
+cd clock-in-viz && npm start
+For starting explorer
+cd web-explorer && npm start
+For starting neo4j
+use ai bro

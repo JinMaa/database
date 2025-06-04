@@ -1,0 +1,14 @@
+
+./bitcoin-to-neo4j
+oylnet-neo4j-data/
+oylnet-data/
+output/
+METHANE/
+../METHANE/
+node_modules
+./clock-in-system
+./alkanes-rs
+./debshrew
+./debshrew_core
+./trace-analysis
+.env

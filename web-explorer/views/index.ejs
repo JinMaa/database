@@ -1,0 +1,108 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0">
+  <title><%= title %></title>
+  <link href="https://cdn.jsdelivr.net/npm/bootstrap@5.2.3/dist/css/bootstrap.min.css" rel="stylesheet">
+  <link rel="stylesheet" href="https://cdn.jsdelivr.net/npm/bootstrap-icons@1.10.3/font/bootstrap-icons.css">
+  <link rel="stylesheet" href="/css/style.css">
+</head>
+<body>
+  <nav class="navbar navbar-dark bg-dark">
+    <div class="container">
+      <a class="navbar-brand" href="/">Neo4j Alkanes Explorer</a>
+      <button class="navbar-toggler" type="button" data-bs-toggle="collapse" data-bs-target="#navbarNav">
+        <span class="navbar-toggler-icon"></span>
+      </button>
+      <div class="collapse navbar-collapse" id="navbarNav">
+        <ul class="navbar-nav ms-auto flex-row">
+          <li class="nav-item me-3">
+            <a class="nav-link active" href="/"><i class="bi bi-house-door"></i> Home</a>
+          </li>
+          <li class="nav-item me-3">
+            <a class="nav-link" href="/callstack"><i class="bi bi-diagram-3"></i> Call Stack</a>
+          </li>
+          <li class="nav-item me-3">
+            <a class="nav-link" href="/dashboard"><i class="bi bi-speedometer2"></i> Dashboard</a>
+          </li>
+          <li class="nav-item">
+            <a class="nav-link" href="/analytics"><i class="bi bi-graph-up"></i> Analytics</a>
+          </li>
+        </ul>
+      </div>
+    </div>
+  </nav>
+
+  <div class="container mt-4">
+    <div class="row">
+      <div class="col-md-12">
+        <h1>Alkanes Explorer</h1>
+        
+        <!-- Featured Tools -->
+        <div class="row mb-4">
+          <div class="col-md-4 mb-3">
+            <div class="card h-100 border-primary">
+              <div class="card-header bg-primary text-white">
+                <h3 class="mb-0"><i class="bi bi-layers"></i> Call Stack Visualization</h3>
+              </div>
+              <div class="card-body">
+                <p class="card-text">Visually explore protostone execution flows with detailed event call stacks, showing alkane transfers, creations, and relationships.</p>
+                <a href="/callstack" class="btn btn-primary"><i class="bi bi-diagram-3"></i> View Call Stack Visualization</a>
+              </div>
+            </div>
+          </div>
+          
+          <div class="col-md-4 mb-3">
+            <div class="card h-100 border-success">
+              <div class="card-header bg-success text-white">
+                <h3 class="mb-0"><i class="bi bi-speedometer2"></i> Chain Performance</h3>
+              </div>
+              <div class="card-body">
+                <p class="card-text">View high-level performance metrics including transactions per second, protostones per second, and events per second based on block timestamps.</p>
+                <a href="/dashboard" class="btn btn-success"><i class="bi bi-graph-up"></i> View Performance Dashboard</a>
+              </div>
+            </div>
+          </div>
+          <div class="col-md-4 mb-3">
+            <div class="card h-100 border-info">
+              <div class="card-header bg-info text-white">
+                <h3 class="mb-0"><i class="bi bi-graph-up"></i> Advanced Analytics</h3>
+              </div>
+              <div class="card-body">
+                <p class="card-text">Explore advanced blockchain analytics with visualizations and insights.</p>
+                <a href="/analytics" class="btn btn-info">View Analytics</a>
+              </div>
+            </div>
+          </div>
+        </div>
+        
+        <h2>Available Queries</h2>
+        <p>Select a query to view the results in a table format:</p>
+        
+        <div class="mt-4">
+          <% Object.entries(queryGroups).forEach(([group, groupQueries]) => { %>
+            <div class="card mb-4">
+              <div class="card-header bg-dark text-white">
+                <h3 class="mb-0"><%= group %></h3>
+              </div>
+              <div class="list-group list-group-flush">
+                <% groupQueries.forEach(query => { %>
+                  <a href="/query/<%= query.path %>" class="list-group-item list-group-item-action">
+                    <div class="d-flex w-100 justify-content-between">
+                      <h5 class="mb-1"><%= query.name %></h5>
+                    </div>
+                    <p class="mb-1 text-muted"><%= query.path %></p>
+                  </a>
+                <% }); %>
+              </div>
+            </div>
+          <% }); %>
+        </div>
+      </div>
+    </div>
+  </div>
+
+  <script src="https://cdn.jsdelivr.net/npm/bootstrap@5.2.3/dist/js/bootstrap.bundle.min.js"></script>
+</body>
+</html>

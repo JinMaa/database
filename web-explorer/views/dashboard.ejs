@@ -1,0 +1,337 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0">
+  <title>Chain Performance Dashboard - <%= title %></title>
+  <link href="https://cdn.jsdelivr.net/npm/bootstrap@5.2.3/dist/css/bootstrap.min.css" rel="stylesheet">
+  <link rel="stylesheet" href="https://cdn.jsdelivr.net/npm/bootstrap-icons@1.10.3/font/bootstrap-icons.css">
+  <link rel="stylesheet" href="/css/style.css">
+  <script src="https://cdn.jsdelivr.net/npm/chart.js"></script>
+  <style>
+    .metric-card {
+      height: 100%;
+      transition: transform 0.2s;
+      border-radius: 10px;
+      overflow: hidden;
+    }
+    
+    .metric-card:hover {
+      transform: translateY(-5px);
+      box-shadow: 0 10px 20px rgba(0,0,0,0.1);
+    }
+    
+    .metric-icon {
+      font-size: 2.5rem;
+      opacity: 0.8;
+    }
+    
+    .metric-value {
+      font-size: 2.5rem;
+      font-weight: 700;
+    }
+    
+    .metric-label {
+      font-size: 1rem;
+      text-transform: uppercase;
+      letter-spacing: 1px;
+      opacity: 0.8;
+    }
+    
+    .chart-container {
+      height: 300px;
+      margin-bottom: 30px;
+    }
+    
+    .data-table {
+      font-size: 0.9rem;
+    }
+    
+    .data-table th {
+      background-color: #f8f9fa;
+      position: sticky;
+      top: 0;
+      z-index: 10;
+    }
+    
+    .dashboard-header {
+      margin-bottom: 2rem;
+      padding-bottom: 1rem;
+      border-bottom: 1px solid #e9ecef;
+    }
+    
+    .section-heading {
+      margin-top: 2rem;
+      margin-bottom: 1.5rem;
+      padding-bottom: 0.5rem;
+      border-bottom: 1px solid #e9ecef;
+    }
+    
+    .timestamp-display {
+      font-size: 0.9rem;
+      color: #6c757d;
+    }
+  </style>
+</head>
+<body>
+  <nav class="navbar navbar-dark bg-dark">
+    <div class="container">
+      <a class="navbar-brand" href="/">Neo4j Alkanes Explorer</a>
+      <ul class="navbar-nav ms-auto flex-row">
+        <li class="nav-item me-3">
+          <a class="nav-link" href="/"><i class="bi bi-house-door"></i> Home</a>
+        </li>
+        <li class="nav-item me-3">
+          <a class="nav-link" href="/callstack"><i class="bi bi-diagram-3"></i> Call Stack</a>
+        </li>
+        <li class="nav-item active">
+          <a class="nav-link" href="/dashboard"><i class="bi bi-speedometer2"></i> Dashboard</a>
+        </li>
+      </ul>
+    </div>
+  </nav>
+
+  <div class="container-fluid mt-4">
+    <div class="row">
+      <div class="col-md-12">
+        <div class="dashboard-header">
+          <div class="d-flex justify-content-between align-items-center">
+            <h1><i class="bi bi-speedometer2"></i> Chain Performance Dashboard</h1>
+            <div class="timestamp-display">
+              Last updated: <%= new Date().toLocaleString() %>
+              <button id="refreshBtn" class="btn btn-sm btn-outline-primary ms-2"><i class="bi bi-arrow-clockwise"></i> Refresh</button>
+            </div>
+          </div>
+        </div>
+        
+        <% 
+          // Calculate overall averages
+          let avgTxPerSecond = 0;
+          let avgProtostonesPerSecond = 0;
+          let avgEventsPerSecond = 0;
+          
+          if (results.length > 0) {
+            const totalWindows = results.length;
+            
+            results.forEach(record => {
+              avgTxPerSecond += record.tx_per_second;
+              avgProtostonesPerSecond += record.protostones_per_second;
+              avgEventsPerSecond += record.events_per_second;
+            });
+            
+            avgTxPerSecond = (avgTxPerSecond / totalWindows).toFixed(2);
+            avgProtostonesPerSecond = (avgProtostonesPerSecond / totalWindows).toFixed(2);
+            avgEventsPerSecond = (avgEventsPerSecond / totalWindows).toFixed(2);
+          }
+          
+          // Calculate latest value (most recent time window)
+          let latestTxPerSecond = results.length > 0 ? results[0].tx_per_second : 0;
+          let latestProtostonesPerSecond = results.length > 0 ? results[0].protostones_per_second : 0;
+          let latestEventsPerSecond = results.length > 0 ? results[0].events_per_second : 0;
+        %>
+        
+        <!-- Key Metrics Cards -->
+        <div class="row mb-4">
+          <div class="col-md-4 mb-4">
+            <div class="card metric-card bg-primary text-white h-100">
+              <div class="card-body">
+                <div class="d-flex justify-content-between align-items-start">
+                  <div>
+                    <div class="metric-label">Transactions / Second</div>
+                    <div class="metric-value"><%= latestTxPerSecond %></div>
+                    <div class="small">Avg: <%= avgTxPerSecond %> tx/s</div>
+                  </div>
+                  <div class="metric-icon">
+                    <i class="bi bi-cpu"></i>
+                  </div>
+                </div>
+              </div>
+            </div>
+          </div>
+          
+          <div class="col-md-4 mb-4">
+            <div class="card metric-card bg-success text-white h-100">
+              <div class="card-body">
+                <div class="d-flex justify-content-between align-items-start">
+                  <div>
+                    <div class="metric-label">Protostones / Second</div>
+                    <div class="metric-value"><%= latestProtostonesPerSecond %></div>
+                    <div class="small">Avg: <%= avgProtostonesPerSecond %> protostones/s</div>
+                  </div>
+                  <div class="metric-icon">
+                    <i class="bi bi-gem"></i>
+                  </div>
+                </div>
+              </div>
+            </div>
+          </div>
+          
+          <div class="col-md-4 mb-4">
+            <div class="card metric-card bg-info text-white h-100">
+              <div class="card-body">
+                <div class="d-flex justify-content-between align-items-start">
+                  <div>
+                    <div class="metric-label">Events / Second</div>
+                    <div class="metric-value"><%= latestEventsPerSecond %></div>
+                    <div class="small">Avg: <%= avgEventsPerSecond %> events/s</div>
+                  </div>
+                  <div class="metric-icon">
+                    <i class="bi bi-lightning-charge"></i>
+                  </div>
+                </div>
+              </div>
+            </div>
+          </div>
+        </div>
+        
+        <!-- Performance Charts -->
+        <h3 class="section-heading"><i class="bi bi-graph-up"></i> Performance Over Time</h3>
+        
+        <div class="row">
+          <div class="col-md-12">
+            <div class="card mb-4">
+              <div class="card-body">
+                <div class="chart-container">
+                  <canvas id="performanceChart"></canvas>
+                </div>
+              </div>
+            </div>
+          </div>
+        </div>
+        
+        <!-- Raw Data -->
+        <h3 class="section-heading"><i class="bi bi-table"></i> Raw Metrics</h3>
+        
+        <div class="row">
+          <div class="col-md-12">
+            <div class="card">
+              <div class="card-body">
+                <div class="table-responsive" style="max-height: 500px;">
+                  <table class="table table-striped table-hover data-table">
+                    <thead>
+                      <tr>
+                        <th>Time Window</th>
+                        <th>Start Time</th>
+                        <th>End Time</th>
+                        <th>Blocks</th>
+                        <th>Transactions</th>
+                        <th>Protostones</th>
+                        <th>Events</th>
+                        <th>Tx/s</th>
+                        <th>Protostones/s</th>
+                        <th>Events/s</th>
+                      </tr>
+                    </thead>
+                    <tbody>
+                      <% results.forEach(record => { %>
+                        <tr>
+                          <td><%= record.time_window_id %></td>
+                          <td><%= record.start_time %></td>
+                          <td><%= record.end_time %></td>
+                          <td><%= record.blocks_in_window %></td>
+                          <td><%= record.transactions %></td>
+                          <td><%= record.protostones %></td>
+                          <td><%= record.events %></td>
+                          <td><%= record.tx_per_second %></td>
+                          <td><%= record.protostones_per_second %></td>
+                          <td><%= record.events_per_second %></td>
+                        </tr>
+                      <% }); %>
+                    </tbody>
+                  </table>
+                </div>
+              </div>
+            </div>
+          </div>
+        </div>
+      </div>
+    </div>
+  </div>
+
+  <script src="https://code.jquery.com/jquery-3.6.0.min.js"></script>
+  <script src="https://cdn.jsdelivr.net/npm/bootstrap@5.2.3/dist/js/bootstrap.bundle.min.js"></script>
+  <script>
+    $(document).ready(function() {
+      // Prepare the data for charts
+      const chartLabels = [<%= results.map(r => `"${r.start_time}"`).reverse().join(',') %>];
+      const txData = [<%= results.map(r => r.tx_per_second).reverse().join(',') %>];
+      const protostoneData = [<%= results.map(r => r.protostones_per_second).reverse().join(',') %>];
+      const eventData = [<%= results.map(r => r.events_per_second).reverse().join(',') %>];
+      
+      // Create the chart
+      const ctx = document.getElementById('performanceChart').getContext('2d');
+      const performanceChart = new Chart(ctx, {
+        type: 'line',
+        data: {
+          labels: chartLabels,
+          datasets: [
+            {
+              label: 'Transactions/s',
+              data: txData,
+              borderColor: 'rgba(13, 110, 253, 1)',
+              backgroundColor: 'rgba(13, 110, 253, 0.1)',
+              borderWidth: 2,
+              tension: 0.4,
+              fill: true
+            },
+            {
+              label: 'Protostones/s',
+              data: protostoneData,
+              borderColor: 'rgba(25, 135, 84, 1)',
+              backgroundColor: 'rgba(25, 135, 84, 0.1)',
+              borderWidth: 2,
+              tension: 0.4,
+              fill: true
+            },
+            {
+              label: 'Events/s',
+              data: eventData,
+              borderColor: 'rgba(13, 202, 240, 1)',
+              backgroundColor: 'rgba(13, 202, 240, 0.1)',
+              borderWidth: 2,
+              tension: 0.4,
+              fill: true
+            }
+          ]
+        },
+        options: {
+          responsive: true,
+          maintainAspectRatio: false,
+          scales: {
+            y: {
+              beginAtZero: true,
+              title: {
+                display: true,
+                text: 'Rate per Second'
+              }
+            },
+            x: {
+              title: {
+                display: true,
+                text: 'Time'
+              }
+            }
+          },
+          interaction: {
+            mode: 'index',
+            intersect: false
+          },
+          plugins: {
+            tooltip: {
+              enabled: true
+            },
+            legend: {
+              position: 'top'
+            }
+          }
+        }
+      });
+      
+      // Refresh button
+      $('#refreshBtn').click(function() {
+        window.location.reload();
+      });
+    });
+  </script>
+</body>
+</html>

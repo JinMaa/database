@@ -1,0 +1,356 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0">
+  <title>Call Stack Visualizer - <%= title %></title>
+  <link href="https://cdn.jsdelivr.net/npm/bootstrap@5.2.3/dist/css/bootstrap.min.css" rel="stylesheet">
+  <link rel="stylesheet" href="https://cdn.jsdelivr.net/npm/datatables.net-bs5@1.13.2/css/dataTables.bootstrap5.min.css">
+  <link rel="stylesheet" href="/css/style.css">
+  <style>
+    .call-stack-container {
+      margin-bottom: 40px;
+      padding: 15px;
+      border-radius: 8px;
+      background-color: #f8f9fa;
+      box-shadow: 0 4px 6px rgba(0,0,0,0.1);
+    }
+    
+    .call-stack-header {
+      padding: 10px;
+      background-color: #343a40;
+      color: white;
+      border-radius: 5px;
+      margin-bottom: 15px;
+    }
+    
+    .event-node {
+      padding: 12px;
+      border-radius: 6px;
+      margin-bottom: 10px;
+      position: relative;
+      border-left: 5px solid #6c757d;
+    }
+    
+    .event-invoke {
+      background-color: #e3f2fd;
+      border-left-color: #0d6efd;
+    }
+    
+    .event-create {
+      background-color: #d1e7dd;
+      border-left-color: #198754;
+    }
+    
+    .event-return {
+      background-color: #f8d7da;
+      border-left-color: #dc3545;
+    }
+    
+    .event-transfer {
+      background-color: #fff3cd;
+      border-left-color: #ffc107;
+    }
+    
+    .event-arrow {
+      position: absolute;
+      left: 20px;
+      bottom: -15px;
+      color: #6c757d;
+      font-size: 20px;
+      z-index: 10;
+    }
+    
+    .alkane-badge {
+      display: inline-block;
+      padding: 5px 8px;
+      margin: 3px;
+      border-radius: 4px;
+      font-size: 0.85rem;
+      white-space: nowrap;
+      overflow: hidden;
+      text-overflow: ellipsis;
+      max-width: 200px;
+    }
+    
+    .caller {
+      background-color: #6610f2;
+      color: white;
+    }
+    
+    .transfer {
+      background-color: #fd7e14;
+      color: white;
+    }
+    
+    .creates {
+      background-color: #20c997;
+      color: white;
+    }
+    
+    .myself {
+      background-color: #0dcaf0;
+      color: white;
+    }
+    
+    .return-transfer {
+      background-color: #d63384;
+      color: white;
+    }
+    
+    .protostone-link {
+      color: #0d6efd;
+      text-decoration: none;
+      font-weight: 500;
+    }
+    
+    .protostone-link:hover {
+      text-decoration: underline;
+    }
+    
+    .event-index {
+      font-weight: bold;
+      background-color: #343a40;
+      color: white;
+      border-radius: 50%;
+      width: 28px;
+      height: 28px;
+      display: inline-flex;
+      align-items: center;
+      justify-content: center;
+      margin-right: 8px;
+    }
+    
+    .call-details {
+      margin-top: 10px;
+      font-family: monospace;
+      white-space: pre-wrap;
+      max-height: 150px;
+      overflow-y: auto;
+      padding: 10px;
+      background-color: rgba(0,0,0,0.05);
+      border-radius: 4px;
+      font-size: 0.9rem;
+    }
+    
+    .toggle-details {
+      cursor: pointer;
+      color: #0d6efd;
+    }
+    
+    .fuel-badge {
+      background-color: #6c757d;
+      color: white;
+      font-size: 0.8rem;
+      padding: 2px 5px;
+      border-radius: 4px;
+    }
+  </style>
+</head>
+<body>
+  <nav class="navbar navbar-dark bg-dark">
+    <div class="container">
+      <a class="navbar-brand" href="/">Neo4j Alkanes Explorer</a>
+    </div>
+  </nav>
+
+  <div class="container-fluid mt-4">
+    <div class="row">
+      <div class="col-md-12">
+        <div class="d-flex justify-content-between align-items-center">
+          <h1>Call Stack Visualizer</h1>
+          <a href="/" class="btn btn-primary">Back to Queries</a>
+        </div>
+        
+        <div class="card mt-3 mb-4">
+          <div class="card-header">
+            <h5>Query</h5>
+          </div>
+          <div class="card-body">
+            <pre><code><%= query %></code></pre>
+          </div>
+        </div>
+        
+        <% if (results.length === 0) { %>
+          <div class="alert alert-info">No results found</div>
+        <% } else { %>
+          <!-- Group results by protostone (txid + vout) -->
+          <% 
+            const protostoneGroups = {};
+            results.forEach(record => {
+              const key = `${record.txid}:${record.vout}`;
+              if (!protostoneGroups[key]) {
+                protostoneGroups[key] = {
+                  txid: record.txid,
+                  vout: record.vout,
+                  block_height: record.block_height,
+                  tx_index: record.tx_index,
+                  protocol_tag: record.protocol_tag,
+                  events: []
+                };
+              }
+              protostoneGroups[key].events.push(record);
+            });
+          %>
+          
+          <div class="d-flex justify-content-between mb-4">
+            <h4><%= Object.keys(protostoneGroups).length %> Protostones with <%= results.length %> Events</h4>
+            <div>
+              <button class="btn btn-sm btn-outline-secondary" id="expandAll">Expand All Details</button>
+              <button class="btn btn-sm btn-outline-secondary ms-2" id="collapseAll">Collapse All Details</button>
+            </div>
+          </div>
+          
+          <% Object.values(protostoneGroups).forEach((protostone, index) => { %>
+            <div class="call-stack-container">
+              <div class="call-stack-header">
+                <div class="d-flex justify-content-between align-items-center">
+                  <h4 class="mb-0">
+                    Protostone: <%= protostone.txid %>:<%= protostone.vout %>
+                  </h4>
+                  <div>
+                    <span class="badge bg-primary me-2">Block <%= protostone.block_height %></span>
+                    <span class="badge bg-secondary">Tx Index <%= protostone.tx_index %></span>
+                  </div>
+                </div>
+                <div class="mt-2 small">
+                  Protocol Tag: <%= protostone.protocol_tag || 'Unknown' %>
+                </div>
+              </div>
+              
+              <div class="call-stack-events">
+                <% protostone.events.sort((a, b) => a.event_index - b.event_index).forEach((event, eventIndex) => { 
+                  let eventClass = 'event-node';
+                  if (event.event_type.includes('invoke')) eventClass += ' event-invoke';
+                  else if (event.event_type.includes('create')) eventClass += ' event-create';
+                  else if (event.event_type.includes('return')) eventClass += ' event-return';
+                  else if (event.event_type.includes('transfer')) eventClass += ' event-transfer';
+                %>
+                  <div class="<%= eventClass %>" id="event-<%= protostone.txid %>-<%= protostone.vout %>-<%= event.event_index %>">
+                    <div class="d-flex justify-content-between">
+                      <div>
+                        <span class="event-index"><%= event.event_index %></span>
+                        <strong><%= event.event_type %></strong>
+                        <% if (event.data_type) { %>
+                          <span class="badge bg-dark ms-2"><%= event.data_type %></span>
+                        <% } %>
+                        <% if (event.status) { %>
+                          <span class="badge bg-<%= event.status === 'success' ? 'success' : 'danger' %> ms-2"><%= event.status %></span>
+                        <% } %>
+                      </div>
+                      <div>
+                        <% if (event.fuel) { %>
+                          <span class="fuel-badge">Fuel: <%= event.fuel %></span>
+                        <% } %>
+                        <span class="ms-2 toggle-details" data-target="details-<%= protostone.txid %>-<%= protostone.vout %>-<%= event.event_index %>">
+                          <i class="bi bi-chevron-down"></i> Details
+                        </span>
+                      </div>
+                    </div>
+                    
+                    <div class="mt-3">
+                      <!-- Source alkanes (callers) -->
+                      <% if (event.source_alkanes && event.source_alkanes.length > 0) { %>
+                        <div class="mb-2">
+                          <strong>Source:</strong>
+                          <% event.source_alkanes.forEach(alkane => { %>
+                            <span class="alkane-badge caller"><%= alkane %></span>
+                          <% }); %>
+                        </div>
+                      <% } %>
+                      
+                      <!-- Myself alkanes -->
+                      <% if (event.myself_alkanes && event.myself_alkanes.length > 0) { %>
+                        <div class="mb-2">
+                          <strong>Self:</strong>
+                          <% event.myself_alkanes.forEach(alkane => { %>
+                            <span class="alkane-badge myself"><%= alkane %></span>
+                          <% }); %>
+                        </div>
+                      <% } %>
+                      
+                      <!-- Transfer targets -->
+                      <% if (event.target_alkanes && event.target_alkanes.length > 0) { %>
+                        <div class="mb-2">
+                          <strong>Transfers To:</strong>
+                          <% event.target_alkanes.forEach(alkane => { %>
+                            <span class="alkane-badge transfer"><%= alkane %></span>
+                          <% }); %>
+                        </div>
+                      <% } %>
+                      
+                      <!-- Created alkanes -->
+                      <% if (event.created_alkanes && event.created_alkanes.length > 0) { %>
+                        <div class="mb-2">
+                          <strong>Creates:</strong>
+                          <% event.created_alkanes.forEach(alkane => { %>
+                            <span class="alkane-badge creates"><%= alkane %></span>
+                          <% }); %>
+                        </div>
+                      <% } %>
+                      
+                      <!-- Return transfers -->
+                      <% if (event.return_alkanes && event.return_alkanes.length > 0) { %>
+                        <div class="mb-2">
+                          <strong>Returns To:</strong>
+                          <% event.return_alkanes.forEach(alkane => { %>
+                            <span class="alkane-badge return-transfer"><%= alkane %></span>
+                          <% }); %>
+                        </div>
+                      <% } %>
+                    </div>
+                    
+                    <!-- Detailed event data (hidden by default) -->
+                    <div class="call-details d-none" id="details-<%= protostone.txid %>-<%= protostone.vout %>-<%= event.event_index %>">
+                      <%= JSON.stringify(event.event_data, null, 2) %>
+                    </div>
+                    
+                    <% if (eventIndex < protostone.events.length - 1) { %>
+                      <div class="event-arrow">
+                        <i class="bi bi-arrow-down"></i>
+                      </div>
+                    <% } %>
+                  </div>
+                <% }); %>
+              </div>
+            </div>
+          <% }); %>
+        <% } %>
+      </div>
+    </div>
+  </div>
+
+  <script src="https://code.jquery.com/jquery-3.6.0.min.js"></script>
+  <script src="https://cdn.jsdelivr.net/npm/bootstrap@5.2.3/dist/js/bootstrap.bundle.min.js"></script>
+  <script>
+    $(document).ready(function() {
+      // Toggle event details
+      $('.toggle-details').click(function() {
+        const targetId = $(this).data('target');
+        const $details = $(`#${targetId}`);
+        const $icon = $(this).find('i');
+        
+        if ($details.hasClass('d-none')) {
+          $details.removeClass('d-none');
+          $icon.removeClass('bi-chevron-down').addClass('bi-chevron-up');
+        } else {
+          $details.addClass('d-none');
+          $icon.removeClass('bi-chevron-up').addClass('bi-chevron-down');
+        }
+      });
+      
+      // Expand all details
+      $('#expandAll').click(function() {
+        $('.call-details').removeClass('d-none');
+        $('.toggle-details i').removeClass('bi-chevron-down').addClass('bi-chevron-up');
+      });
+      
+      // Collapse all details
+      $('#collapseAll').click(function() {
+        $('.call-details').addClass('d-none');
+        $('.toggle-details i').removeClass('bi-chevron-up').addClass('bi-chevron-down');
+      });
+    });
+  </script>
+</body>
+</html>
